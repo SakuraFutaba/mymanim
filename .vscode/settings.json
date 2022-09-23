@@ -1,0 +1,8 @@
+{
+    "editor.fontLigatures": false,
+    "python.analysis.extraPaths": [
+        "manim",
+        "manim_old",
+    ],
+    "python.languageServer": "Pylance",
+}
