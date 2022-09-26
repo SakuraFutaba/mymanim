@@ -43,15 +43,13 @@ def stereo_project(mobject, axis = 2, r = 1, outer_r = 20, **kwargs):
 
     return mobject
 
-LARGE = 2 ** 20
-
 class StereoProjectedSphere(Sphere):
     CONFIG = {
         "stereo_project_config": {
             "axis": 2,
         },
-        "u_range": (TAU / LARGE, TAU - TAU / LARGE),
-        "v_range": (PI / LARGE, PI - PI / LARGE),
+        "u_range": (TAU / 2 ** 20, TAU - TAU / 2 ** 20),
+        "v_range": (PI / 2 ** 20, PI - PI / 2 ** 20),
         "max_r": 32,
         "max_width": FRAME_WIDTH,
         "max_height": FRAME_WIDTH,
@@ -204,8 +202,9 @@ class Kuri(Scene):
         )
         sp.add(coord_point_mobs)
 
-        self.wait(2)
+        self.wait(0.5)
         self.remove(sf)
+        self.wait(0.5)
 
         def get_rot_matrix():
             return np.array([pm.get_vector() for pm in coord_point_mobs]).T
@@ -215,7 +214,7 @@ class Kuri(Scene):
             result.mesh = SurfaceMesh(result, resolution=self.mesh_resolution, depth_test=False)
             result.mesh.set_stroke(BLUE, 1, opacity=0.5)
             result.add(result.mesh)
-            result.fade_far_out_submobjects(max_r=32)
+            # result.fade_far_out_submobjects(max_r=32)
             for submob in result:
                 if submob.get_center()[1] < -11:
                     submob.fade(1)
@@ -229,7 +228,16 @@ class Kuri(Scene):
             lambda m: m.become(get_projected_sphere())
         )
         self.play(
+            Rotate(sp, PI / 2, Y_AXIS),
+            run_time = 3
+        )
+        self.play(
+            Rotate(sp, PI / 2, X_AXIS),
+            run_time = 3
+        )
+        self.play(
             Rotate(sp, PI / 2, Z_AXIS),
             run_time = 3
         )
+        # projected_sphere.become(get_projected_sphere())
 
