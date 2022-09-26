@@ -185,12 +185,11 @@ class Kuri(Scene):
         # )
         self.add(sf, axis, sf.mesh)
 
-
         self.play(
             Transform(sf, surfaces[1]),
             run_time=2
         )
-        self.wait(2)
+        self.wait(1)
 
         self.play(
             Transform(sf, surfaces[2]),
