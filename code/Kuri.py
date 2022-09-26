@@ -117,12 +117,6 @@ class SPSphere(Sphere):
 class Kuri(Scene):
     CONFIG = {
         "camera_class": Camera,
-        "point_rotation_angle_axis_pairs": [
-            (45 * DEGREES, DOWN),
-            (120 * DEGREES, OUT),
-            (35 * DEGREES, rotate_vector(RIGHT, 30 * DEGREES)),
-            (90 * DEGREES, IN),
-        ],
         "resolution": (201, 101),
     }
 
@@ -166,18 +160,18 @@ class Kuri(Scene):
         axis = self.init_axis()
 
         surfaces = [
-            TexturedSurface(surface, "../assets/image/gun.png", "../assets/image/gun.png")
+            TexturedSurface(surface, "../assets/image/gun.png")
             for surface in surfaces
         ]
 
         for mob in surfaces:
             mob.mesh = SurfaceMesh(mob, resolution=(41, 21), depth_test=False)
             mob.mesh.set_stroke(BLUE, 1, opacity=0.5)
-            # mob.mesh.set_backstroke(BLUE, 1)
+            mob.add(mob.mesh)
         
         frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
 
-        surface = surfaces[0]
+        sf = surfaces[0]
 
         self.play(
             frame.animate.increment_phi(45 * DEGREES),
@@ -185,34 +179,20 @@ class Kuri(Scene):
         )
 
         # self.play(
-        #     FadeIn(surface),
+        #     FadeIn(sf),
         #     ShowCreation(axis, runtime=3),
-        #     ShowCreation(surface.mesh, lag_ratio=0.01, run_time=3),
+        #     ShowCreation(sf.mesh, lag_ratio=0.01, run_time=3),
         # )
-        self.add(surface, axis, surface.mesh)
+        self.add(sf, axis, sf.mesh)
 
-        for mob in surfaces:
-            mob.add(mob.mesh)
-        surface.save_state()
 
-        self.wait(2)
-        
         self.play(
-            Transform(surface, surfaces[1]),
+            Transform(sf, surfaces[1]),
             run_time=2
         )
-
-        # self.show_a_few_rotations()
-        surface.save_state()
-
         self.wait(2)
 
         self.play(
-            Transform(surface, surfaces[2]),
+            Transform(sf, surfaces[2]),
             run_time=2
         )
-        # self.wait(2)
-        # self.play(FadeIn(surfaces[1]))
-
-        self.wait(3)
-        # frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
