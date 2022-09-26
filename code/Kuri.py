@@ -61,25 +61,20 @@ class StereoProjectedSphere(Sphere):
             rotation_matrix = np.identity(3)
         self.rotation_matrix = rotation_matrix
 
-        self.stereo_project_config["r"] = self.radius
-        ParametricSurface.__init__(
-            self, self.post_projection_func, **kwargs
-        )
+        super().__init__(**kwargs)
         self.submobjects.sort(
             key=lambda m: -m.get_width()
         )
         self.fade_far_out_submobjects()
 
-    def post_projection_func(self, u, v):
-        point = self.radius * Sphere.func(self, u, v)
-        rot_point = np.dot(point, self.rotation_matrix.T)
-        result = stereo_project_point(
-            rot_point, **self.stereo_project_config
-        )
+    def uv_func(self, u, v):
+        p = self.radius * Sphere.uv_func(self, u, v)
+        p = np.dot(p, self.rotation_matrix.T)
+        p = stereo_project_point(p)
         epsilon = 1e-4
-        if np.any(np.abs(result) == np.inf) or np.any(np.isnan(result)):
-            return self.func(u + epsilon, v)
-        return result
+        if np.any(np.abs(p) == np.inf) or np.any(np.isnan(p)):
+            return self.uv_func(u + epsilon, v + epsilon)
+        return p
 
     def fade_far_out_submobjects(self, **kwargs):
         max_r = kwargs.get("max_r", self.max_r)
@@ -94,7 +89,6 @@ class StereoProjectedSphere(Sphere):
                 submob.get_depth() > max_depth
             ]
             if any(violations):
-                # self.remove(submob)
                 submob.fade(1)
         return self
 
@@ -106,13 +100,13 @@ class SPSphere(Sphere):
         "v_range": (0, PI),
     }
 
-
     def uv_func(self, u: float, v: float) -> np.ndarray:
         return self.radius * np.array([
             fdiv(np.cos(u) * np.sin(v), 1 - np.cos(v)),
             fdiv(np.sin(u) * np.sin(v), 1 - np.cos(v)),
             0
         ])
+
 
 class Kuri(Scene):
     CONFIG = {
@@ -143,7 +137,11 @@ class Kuri(Scene):
         stereo_projected_sphere = SPSphere(
             resolution = self.resolution
             )
-        return square, sphere, stereo_projected_sphere
+        sp2 = StereoProjectedSphere(
+            resolution = self.resolution,
+            rotation_matrix = rotation_matrix(PI / 2, axis = Y_AXIS)
+        )
+        return square, sphere, stereo_projected_sphere, sp2
 
     def init_axis(self):
         axis = ThreeDAxes(
@@ -155,9 +153,7 @@ class Kuri(Scene):
         return axis
 
     def construct(self):
-        surfaces = self.init_surfaces()
-        frame = self.init_camera()
-        axis = self.init_axis()
+        surfaces, frame, axis = self.init_surfaces(), self.init_camera(), self.init_axis()
 
         surfaces = [
             TexturedSurface(surface, "../assets/image/gun.png")
@@ -185,13 +181,9 @@ class Kuri(Scene):
         # )
         self.add(sf, axis, sf.mesh)
 
-        self.play(
-            Transform(sf, surfaces[1]),
-            run_time=2
-        )
-        self.wait(1)
-
-        self.play(
-            Transform(sf, surfaces[2]),
-            run_time=2
-        )
+        for sur in surfaces[1:]:
+            self.play(
+                Transform(sf, sur),
+                run_time=2
+            )
+            self.wait(1)
