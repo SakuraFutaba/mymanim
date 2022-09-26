@@ -43,11 +43,15 @@ def stereo_project(mobject, axis = 2, r = 1, outer_r = 20, **kwargs):
 
     return mobject
 
+LARGE = 2 ** 20
+
 class StereoProjectedSphere(Sphere):
     CONFIG = {
         "stereo_project_config": {
             "axis": 2,
         },
+        "u_range": (TAU / LARGE, TAU - TAU / LARGE),
+        "v_range": (PI / LARGE, PI - PI / LARGE),
         "max_r": 32,
         "max_width": FRAME_WIDTH,
         "max_height": FRAME_WIDTH,
@@ -112,6 +116,7 @@ class Kuri(Scene):
     CONFIG = {
         "camera_class": Camera,
         "resolution": (201, 101),
+        "mesh_resolution": (41, 21),
     }
 
     def init_camera(self):
@@ -155,19 +160,23 @@ class Kuri(Scene):
     def construct(self):
         surfaces, frame, axis = self.init_surfaces(), self.init_camera(), self.init_axis()
 
-        surfaces = [
-            TexturedSurface(surface, "../assets/image/gun.png")
-            for surface in surfaces
-        ]
-
+        surfaces = [TexturedSurface(surface, "../assets/image/gun.png") for surface in surfaces]
         for mob in surfaces:
-            mob.mesh = SurfaceMesh(mob, resolution=(41, 21), depth_test=False)
+            mob.mesh = SurfaceMesh(mob, resolution=self.mesh_resolution, depth_test=False)
             mob.mesh.set_stroke(BLUE, 1, opacity=0.5)
             mob.add(mob.mesh)
-        
-        frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
 
-        sf = surfaces[0]
+        # def init_texture_and_mesh(surface):
+        #     surface = TexturedSurface(surface, "../assets/image/gun.png")
+        #     surface.mesh = SurfaceMesh(surface, resolution=self.mesh_resolution, depth_test=False)
+        #     surface.mesh.set_stroke(BLUE, 1, opacity=0.5)
+        #     surface.add(surface.mesh)
+        # for surface in surfaces:
+        #     init_texture_and_mesh(surface)
+        
+        # frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
+
+        sf, sp = surfaces[0], surfaces[1]
 
         self.play(
             frame.animate.increment_phi(45 * DEGREES),
@@ -181,9 +190,46 @@ class Kuri(Scene):
         # )
         self.add(sf, axis, sf.mesh)
 
-        for sur in surfaces[1:]:
+        for sur in surfaces[1:3]:
             self.play(
                 Transform(sf, sur),
                 run_time=2
             )
             self.wait(1)
+
+        coord_point_mobs = VGroup(
+            Vector(RIGHT),
+            Vector(UP),
+            Vector(OUT),
+        )
+        sp.add(coord_point_mobs)
+
+        self.wait(2)
+        self.remove(sf)
+
+        def get_rot_matrix():
+            return np.array([pm.get_vector() for pm in coord_point_mobs]).T
+        def get_projected_sphere():
+            result = StereoProjectedSphere(get_rot_matrix())
+            result = TexturedSurface(result, "../assets/image/gun.png")
+            result.mesh = SurfaceMesh(result, resolution=self.mesh_resolution, depth_test=False)
+            result.mesh.set_stroke(BLUE, 1, opacity=0.5)
+            result.add(result.mesh)
+            result.fade_far_out_submobjects(max_r=32)
+            for submob in result:
+                if submob.get_center()[1] < -11:
+                    submob.fade(1)
+            return result
+
+        self.add(sp, coord_point_mobs)
+
+        projected_sphere = get_projected_sphere()
+        self.add(projected_sphere)
+        projected_sphere.add_updater(
+            lambda m: m.become(get_projected_sphere())
+        )
+        self.play(
+            Rotate(sp, PI / 2, Z_AXIS),
+            run_time = 3
+        )
+
