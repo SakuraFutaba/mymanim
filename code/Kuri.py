@@ -214,7 +214,6 @@ class Kuri(Scene):
             result.mesh = SurfaceMesh(result, resolution=self.mesh_resolution, depth_test=False)
             result.mesh.set_stroke(BLUE, 1, opacity=0.5)
             result.add(result.mesh)
-            # result.fade_far_out_submobjects(max_r=32)
             for submob in result:
                 if submob.get_center()[1] < -11:
                     submob.fade(1)
@@ -223,10 +222,11 @@ class Kuri(Scene):
         self.add(sp, coord_point_mobs)
 
         projected_sphere = get_projected_sphere()
-        self.add(projected_sphere)
         projected_sphere.add_updater(
-            lambda m: m.become(get_projected_sphere())
+            # deepcopy(get_projected_sphere())
+            lambda m: m.match_points(get_projected_sphere())
         )
+        self.add(projected_sphere)
         self.play(
             Rotate(sp, PI / 2, Y_AXIS),
             run_time = 3
@@ -240,4 +240,5 @@ class Kuri(Scene):
             run_time = 3
         )
         # projected_sphere.become(get_projected_sphere())
+        # 比较become next_to区别
 

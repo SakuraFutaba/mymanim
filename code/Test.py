@@ -3,10 +3,20 @@ from manimlib import *
 class TestScene(Scene):
     def construct(self):
         s = Square()
-        self.add(s)
-
+        c = Circle()
+        self.add(c, s)
         self.play(
-            s.animate.scale(2),
-            rate_func=there_and_back,
-            run_time=2,
+            Rotate(s, 90 * DEGREES)
         )
+        c.add_updater(
+            lambda m: m.become(s).next_to(s)
+        )
+        self.play(
+            s.animate.set_width(5),
+            run_time = 2
+        )
+        self.play(
+            s.animate.set_color(PURPLE),
+            run_time = 2
+        )
+        s.become(Triangle())
