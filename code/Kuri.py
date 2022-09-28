@@ -1,10 +1,10 @@
 from manimlib import *
 
-def stereo_project_point(point, axis = 2, r = 1, max_norm = 10000):
-    #(x, y, z) -> (x / (1 - z), y / (1 - z), 0)
-    point = fdiv(point * r, point[axis] + r)
+def stereo_project_point(point, axis = 2, r = 1, max_norm = 200):
+    #(x, y, z) -> (x / (1 + z), y / (1 + z), 0)
+    point = fdiv(point * r, r + point[axis] + 1e-10)
     point[axis] = 0
-    #求长度
+    #限制长度
     norm = get_norm(point)
     if norm > max_norm:
         point *= max_norm / norm
@@ -64,9 +64,9 @@ class StereoProjectedSphere(Sphere):
         self.rotation_matrix = rotation_matrix
 
         super().__init__(**kwargs)
-        self.submobjects.sort(
-            key=lambda m: -m.get_width()
-        )
+        # self.submobjects.sort(
+        #     key=lambda m: -m.get_width()
+        # )
         self.fade_far_out_submobjects()
 
     def uv_func(self, u, v):
@@ -77,6 +77,11 @@ class StereoProjectedSphere(Sphere):
         if np.any(np.abs(p) == np.inf) or np.any(np.isnan(p)):
             return self.uv_func(u + epsilon, v + epsilon)
         return p
+
+    def set_rotation_matrix(self, rotation_matrix=None):
+        if rotation_matrix is None:
+            rotation_matrix = np.identity(3)
+        self.rotation_matrix = rotation_matrix
 
     def fade_far_out_submobjects(self, **kwargs):
         max_r = kwargs.get("max_r", self.max_r)
@@ -102,12 +107,31 @@ class SPSphere(Sphere):
         "v_range": (0, PI),
     }
 
+    # def __init__(self, rotation_matrix=None, **kwargs):
+    #     digest_config(self, kwargs)
+    #     if rotation_matrix is None:
+    #         rotation_matrix = np.identity(3)
+    #     self.rotation_matrix = rotation_matrix
+
+    #     super().__init__(**kwargs)
+    #     self.submobjects.sort(
+    #         key=lambda m: -m.get_width()
+    #     )
+
     def uv_func(self, u: float, v: float) -> np.ndarray:
-        return self.radius * np.array([
-            fdiv(np.cos(u) * np.sin(v), 1 - np.cos(v)),
-            fdiv(np.sin(u) * np.sin(v), 1 - np.cos(v)),
-            0
-        ])
+        # return self.radius * np.array([
+        #     fdiv(np.cos(u) * np.sin(v), 1 - np.cos(v)),
+        #     fdiv(np.sin(u) * np.sin(v), 1 - np.cos(v)),
+        #     0
+        # ])
+        p = self.radius * Sphere.uv_func(self, u, v)
+        # p = np.dot(p, self.rotation_matrix.T)
+        p = fdiv(p, 1 + p[2])
+        p[2] = 0
+        # epsilon = 1e-4
+        # if np.any(np.abs(p) == np.inf) or np.any(np.isnan(p)):
+        #     return self.uv_func(u + epsilon, v + epsilon)
+        return p
 
 
 class Kuri(Scene):
@@ -119,7 +143,7 @@ class Kuri(Scene):
 
     def init_camera(self):
         frame = self.camera.frame
-        frame.set_focal_distance(10)
+        frame.set_focal_distance(5)
         frame.set_euler_angles(
             theta = 0 * DEGREES,
             phi = 0 * DEGREES,
@@ -141,9 +165,8 @@ class Kuri(Scene):
             resolution = self.resolution
             )
         sp2 = StereoProjectedSphere(
-            resolution = self.resolution,
-            rotation_matrix = rotation_matrix(PI / 2, axis = Y_AXIS)
-        )
+            resolution = self.resolution
+            )
         return square, sphere, stereo_projected_sphere, sp2
 
     def init_axis(self):
@@ -163,16 +186,8 @@ class Kuri(Scene):
             mob.mesh = SurfaceMesh(mob, resolution=self.mesh_resolution, depth_test=False)
             mob.mesh.set_stroke(BLUE, 1, opacity=0.5)
             mob.add(mob.mesh)
-
-        # def init_texture_and_mesh(surface):
-        #     surface = TexturedSurface(surface, "../assets/image/gun.png")
-        #     surface.mesh = SurfaceMesh(surface, resolution=self.mesh_resolution, depth_test=False)
-        #     surface.mesh.set_stroke(BLUE, 1, opacity=0.5)
-        #     surface.add(surface.mesh)
-        # for surface in surfaces:
-        #     init_texture_and_mesh(surface)
         
-        # frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
+        frame.add_updater(lambda m, dt: m.increment_theta(-0.1 * dt))
 
         sf, sp = surfaces[0], surfaces[1]
 
@@ -188,28 +203,29 @@ class Kuri(Scene):
         # )
         self.add(sf, axis, sf.mesh)
 
-        for sur in surfaces[1:3]:
-            self.play(
-                Transform(sf, sur),
-                run_time=2
-            )
-            self.wait(1)
+        # for sur in surfaces[1:3]:
+        #     self.play(
+        #         Transform(sf, sur),
+        #         run_time=5
+        #     )
+        #     self.wait(1)
 
+        # coord_point_mobs = VGroup(
+        #     Vector(RIGHT, color = RED),
+        #     Vector(UP, color = GREEN),
+        #     Vector(OUT, color = BLUE),
+        # )
         coord_point_mobs = VGroup(
-            Vector(RIGHT),
-            Vector(UP),
-            Vector(OUT),
+            VectorizedPoint(RIGHT),
+            VectorizedPoint(UP),
+            VectorizedPoint(OUT),
         )
         sp.add(coord_point_mobs)
 
-        self.wait(0.5)
-        self.remove(sf)
-        self.wait(0.5)
-
         def get_rot_matrix():
-            return np.array([pm.get_vector() for pm in coord_point_mobs]).T
+            return np.array([pm.get_location() for pm in coord_point_mobs]).T
         def get_projected_sphere():
-            result = StereoProjectedSphere(get_rot_matrix())
+            result = StereoProjectedSphere(get_rot_matrix(), max_r=10)
             result = TexturedSurface(result, "../assets/image/gun.png")
             result.mesh = SurfaceMesh(result, resolution=self.mesh_resolution, depth_test=False)
             result.mesh.set_stroke(BLUE, 1, opacity=0.5)
@@ -219,26 +235,25 @@ class Kuri(Scene):
                     submob.fade(1)
             return result
 
-        self.add(sp, coord_point_mobs)
-
+        self.add(sp)
         projected_sphere = get_projected_sphere()
+        self.remove(sf)
+        self.add(projected_sphere, axis)
+
         projected_sphere.add_updater(
-            # deepcopy(get_projected_sphere())
-            lambda m: m.match_points(get_projected_sphere())
+            lambda m: m.set_data(get_projected_sphere().data).set_submobjects(get_projected_sphere().submobjects)
         )
-        self.add(projected_sphere)
+        sp.fade(1)
+        for x in sp.submobjects:
+            x.fade(1)
         self.play(
-            Rotate(sp, PI / 2, Y_AXIS),
-            run_time = 3
-        )
-        self.play(
-            Rotate(sp, PI / 2, X_AXIS),
-            run_time = 3
+            Rotate(sp, PI / 12, Z_AXIS),
+            run_time = 0.3
         )
         self.play(
-            Rotate(sp, PI / 2, Z_AXIS),
-            run_time = 3
+            Rotate(sp, PI * 3 / 4, Y_AXIS),
+            run_time = 0.3
         )
-        # projected_sphere.become(get_projected_sphere())
-        # 比较become next_to区别
+
+        # self.embed()
 
