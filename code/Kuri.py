@@ -220,11 +220,6 @@ class Kuri(Scene):
             )
             self.wait(2)
 
-        # coord_point_mobs = VGroup(
-        #     Vector(RIGHT, color = RED),
-        #     Vector(UP, color = GREEN),
-        #     Vector(OUT, color = BLUE),
-        # )
         coord_point_mobs = VGroup(
             VectorizedPoint(RIGHT),
             VectorizedPoint(UP),
@@ -249,8 +244,6 @@ class Kuri(Scene):
         projected_sphere = get_projected_sphere()
         self.remove(sf)
         self.add(projected_sphere, axis)
-
-        print(projected_sphere.data['im_coords'].shape)
 
         projected_sphere.add_updater(
             lambda m: m.match_points(get_projected_sphere()).set_submobjects(get_projected_sphere().submobjects)

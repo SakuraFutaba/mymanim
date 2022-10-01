@@ -182,7 +182,7 @@ class ShowTwoDProjection(Scene):
         )
         self.wait(2)
         self.play(
-            TransformMatchingStrings(formula1, formula2), 
+            TransformMatchingStrings(formula1, formula2, path_arc=90 * DEGREES), 
             run_time=2
         )
 
